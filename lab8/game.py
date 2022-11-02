@@ -1,9 +1,10 @@
 import pygame
 from pygame.draw import *
 from random import randint
+
 pygame.init()
 
-FPS = 30
+FPS = 60
 screen = pygame.display.set_mode((1440, 720))
 
 # Colors
@@ -48,7 +49,9 @@ def new_square(balls):
     color = COLORS[randint(0, 5)]
     v_x = randint(5, 10) * (randint(0, 1) * 2 - 1)
     v_y = randint(5, 10) * (randint(0, 1) * 2 - 1)
-    return [x, y, r, color, v_x, v_y]
+    a_x = randint(-3, 3)
+    a_y = randint(-3, 3)
+    return [x, y, r, color, v_x, v_y, a_x, a_y]
 
 
 def draw_ball(ball):
@@ -62,10 +65,11 @@ def draw_square(square):
     color = square[3]
     polygon(screen, color, [(x - r, y - r), (x + r, y - r), (x + r, y + r), (x - r, y + r)])
 
+
 def click(mouse_event, ball):
     mouse_x = mouse_event.pos[0]
     mouse_y = mouse_event.pos[1]
-    return (mouse_x - ball[0])**2 + (mouse_y - ball[1])**2 <= ball[2]**2
+    return (mouse_x - ball[0]) ** 2 + (mouse_y - ball[1]) ** 2 <= ball[2] ** 2
 
 
 def popb(ball, fl, balls):
@@ -81,9 +85,29 @@ def popb(ball, fl, balls):
     return ball
 
 
+def pops(ball, fl, balls):
+    if not fl:
+        ball[0] += ball[4]
+        ball[1] += ball[5]
+        ball[4] += ball[6] * int(randint(1, 3) == 1)
+        ball[5] += ball[7] * int(randint(1, 3) == 1)
+        if ball[4] ** 2 + ball[5] ** 2 >= 200:
+            ball[4] = randint(5, 10) * (randint(0, 1) * 2 - 1)
+            ball[5] = randint(5, 10) * (randint(0, 1) * 2 - 1)
+            ball[6] = randint(-3, 3)
+            ball[7] = randint(-3, 3)
+        draw_square(ball)
+    else:
+        ball = new_square(balls)
+        ball[4] = randint(5, 10) * (randint(0, 1) * 2 - 1)
+        ball[5] = randint(5, 10) * (randint(0, 1) * 2 - 1)
+        fl = False
+    return ball
+
+
 def col_b(i, balls, boom):
     for j in range(len(balls)):
-        if i != j and not(j in boom) and not(i in boom):
+        if i != j and not (j in boom) and not (i in boom):
             if (balls[i][0] - balls[j][0]) ** 2 + (balls[i][1] - balls[j][1]) ** 2 <= (balls[i][2] + balls[j][2]) ** 2:
                 balls[i][4], balls[j][4] = balls[j][4], balls[i][4]
                 balls[i][5], balls[j][5] = balls[j][5], balls[i][5]
@@ -93,8 +117,29 @@ def col_b(i, balls, boom):
     return balls, boom
 
 
+def shotb(balls, event, score):
+    flb = [False] * n
+    for i in range(len(balls)):
+        fl = click(event, balls[i])
+        if fl:
+            score += 1
+        flb[i] = fl
+    return flb, score
+
+
+def shots(balls, event, score):
+    flb = [False] * n
+    for i in range(len(balls)):
+        fl = click(event, balls[i])
+        if fl:
+            score += 2
+        flb[i] = fl
+    return flb, score
+
+
 def col(ball):
-    while ball[0] + ball[4] - 1440 > -ball[2] or ball[0] + ball[4] < ball[2] or ball[1] + ball[5] - 720 > -ball[2] or ball[1] + ball[5] < ball[2]:
+    while ball[0] + ball[4] - 1440 > -ball[2] or ball[0] + ball[4] < ball[2] or ball[1] + ball[5] - 720 > -ball[2] or \
+            ball[1] + ball[5] < ball[2]:
         ball[4] = randint(5, 10) * (randint(0, 1) * 2 - 1)
         ball[5] = randint(5, 10) * (randint(0, 1) * 2 - 1)
     return ball
@@ -107,7 +152,7 @@ finished = False
 score = 0
 square = new_square([])
 draw_square(square)
-n = 3
+n = 4
 balls = []
 for i in range(n):
     ball = new_ball(balls)
@@ -116,8 +161,10 @@ squares = []
 for i in range(n):
     square = new_square(balls + squares)
     squares.append(square)
-fls = [False]*n*2
 ball = balls[0]
+fls = [False] * n
+flb = [False] * n
+f1 = pygame.font.Font(None, 36)
 while not finished:
     clock.tick(FPS)
     for event in pygame.event.get():
@@ -125,18 +172,27 @@ while not finished:
             finished = True
         elif event.type == pygame.MOUSEBUTTONDOWN:
             print('Click!')
-            for i in range(n):
-                fl = click(event, balls[i])
-                if fl:
-                    score += 1
-                fls[i] = fl
+            flb, score = shotb(balls, event, score)
+            fls, score = shots(squares, event, score)
+    score_text = f1.render('score: ' + str(score), 1, (180, 0, 0))
+    screen.blit(score_text, (20, 30))
+    instruction_text = f1.render('click on balls - 1 point, click on squares - 2 points', 1, (153, 255, 153))
+    screen.blit(instruction_text, (150, 30))
     for i in range(n):
-        balls[i] = popb(balls[i], fls[i], balls)
-    fls = [False]*n
+        balls[i] = popb(balls[i], flb[i], balls)
+    flb = [False] * n
     boom = []
     for i in range(n):
-        balls, boom = col_b(i, balls, boom)
+        squares[i] = pops(squares[i], fls[i], balls)
+    fls = [False] * n
+    for i in range(n):
         balls[i] = col(balls[i])
+    for i in range(n):
+        squares[i] = col(squares[i])
+    objects = balls + squares
+    boom = []
+    for i in range(len(objects)):
+        objects, boom = col_b(i, objects, boom)
     pygame.display.update()
     screen.fill(BLACK)
 
