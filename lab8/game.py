@@ -296,5 +296,5 @@ while not finished:
 
 pygame.quit()
 
-print("-----End of the game-----")
+print(" ----End of the game----")
 print("Score:", score)
