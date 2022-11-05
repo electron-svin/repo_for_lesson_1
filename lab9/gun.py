@@ -3,9 +3,7 @@ from random import choice
 from random import randint as rnd
 from pygame.draw import *
 
-
 import pygame
-
 
 FPS = 30
 
@@ -24,6 +22,7 @@ WIDTH = 800
 HEIGHT = 600
 
 GRAVITY = 1
+
 
 class Ball:
     def __init__(self, screen: pygame.Surface, x=40, y=450):
@@ -51,7 +50,7 @@ class Ball:
         """
         if self.x + self.vx + self.r > WIDTH or self.x + self.vx - self.r < 0:
             self.vx = -self.vx // 2
-            if abs(self.vx) == 1:
+            if abs(self.vx) <= 1:
                 self.vx = 0
         if self.y - self.vy + self.r > HEIGHT:
             self.vy = -self.vy // 2
@@ -84,7 +83,7 @@ class Ball:
         Returns:
             Возвращает True в случае столкновения мяча и цели. В противном случае возвращает False.
         """
-        if (self.x - obj.x)**2 + (self.y - obj.y)**2 <= (self.r + obj.r)**2:
+        if (self.x - obj.x) ** 2 + (self.y - obj.y) ** 2 <= (self.r + obj.r) ** 2:
             return True
         return False
 
@@ -110,7 +109,7 @@ class Gun:
         bullet += 1
         new_ball = Ball(self.screen)
         new_ball.r += 5
-        self.an = math.atan2((event.pos[1]-new_ball.y), (event.pos[0]-new_ball.x))
+        self.an = math.atan2((event.pos[1] - new_ball.y), (event.pos[0] - new_ball.x))
         new_ball.vx = self.f2_power * math.cos(self.an) // 2
         new_ball.vy = - self.f2_power * math.sin(self.an) // 2
         balls.append(new_ball)
@@ -120,10 +119,10 @@ class Gun:
     def targetting(self, event):
         """Прицеливание. Зависит от положения мыши."""
         if event:
-            if event.pos[0]-20 == 0:
+            if event.pos[0] - 20 == 0:
                 self.an = math.asin(1)
             else:
-                self.an = math.atan((event.pos[1]-450) / (event.pos[0]-20))
+                self.an = math.atan((event.pos[1] - 450) / (event.pos[0] - 20))
         if self.f2_on:
             self.color = RED
         else:
@@ -133,9 +132,10 @@ class Gun:
         l = self.f2_power
         w = 7
         polygon(screen, self.color, [(20, 450),
-                                (20 + l * math.cos(self.an), 450 + l * math.sin(self.an)),
-                                (20 + l * math.cos(self.an) + w * math.sin(self.an), 450 + l * math.sin(self.an) - w * math.cos(self.an)),
-                                (20 + w * math.sin(self.an), 450 - w * math.cos(self.an))])
+                                     (20 + l * math.cos(self.an), 450 + l * math.sin(self.an)),
+                                     (20 + l * math.cos(self.an) + w * math.sin(self.an),
+                                      450 + l * math.sin(self.an) - w * math.cos(self.an)),
+                                     (20 + w * math.sin(self.an), 450 - w * math.cos(self.an))])
 
     def power_up(self):
         if self.f2_on:
@@ -160,7 +160,6 @@ class Target:
         self.live = 1
         self.points = 0
         self.color = RED
-
 
     def new_target(self):
         """ Инициализация новой цели. """
@@ -194,16 +193,20 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 text = pygame.font.Font(None, 24)
 bullet = 0
 balls = []
+targets = []
 
 clock = pygame.time.Clock()
 gun = Gun(screen)
-target = Target(screen)
 finished = False
-
+for i in range(2):
+    targets.append(Target(screen))
+for target in targets:
+    target.new_target()
 while not finished:
     screen.fill(WHITE)
     gun.draw()
-    target.draw()
+    for target in targets:
+        target.draw()
     for b in balls:
         b.draw()
     score_text = text.render('score: ' + str(target.points), True, (139, 0, 255))
@@ -225,22 +228,23 @@ while not finished:
     for i in range(len(balls)):
         b = balls[i]
         b.move()
-        if b.hittest(target) and target.live:
-            pygame.display.update()
-            screen.fill(WHITE)
-            gun.draw()
-            for b in balls:
-                b.draw()
-            score_text = text.render('score: ' + str(target.points), True, (139, 0, 255))
-            screen.blit(score_text, (20, 30))
-            score_text = text.render('Вы уничтожили цель за ' + str(bullet) + " выстрелов", True, (0, 214, 120))
-            screen.blit(score_text, (250, 250))
-            bullet = 0
-            pygame.display.update()
-            clock.tick(1)
-            target.live = 0
-            target.hit()
-            target.new_target()
+        for target in targets:
+            if b.hittest(target) and target.live:
+                pygame.display.update()
+                screen.fill(WHITE)
+                gun.draw()
+                for b in balls:
+                    b.draw()
+                score_text = text.render('score: ' + str(target.points), True, (139, 0, 255))
+                screen.blit(score_text, (20, 30))
+                score_text = text.render('Вы уничтожили цель за ' + str(bullet) + " выстрелов", True, (0, 214, 120))
+                screen.blit(score_text, (250, 250))
+                bullet = 0
+                pygame.display.update()
+                clock.tick(1)
+                target.live = 0
+                target.hit()
+                target.new_target()
         if b.live < 0:
             delete_list.append(i)
     for i in delete_list:
